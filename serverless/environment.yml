@@ -1,0 +1,5 @@
+NODE_ENV: ${self:custom.secrets.NODE_ENV}
+ENCRYPTION_KEY: ${self:custom.secrets.ENCRYPTION_KEY}
+JWT_SECRET_KEY: ${self:custom.secrets.JWT_SECRET_KEY}
+SEED_USERNAME: ${self:custom.secrets.SEED_USERNAME}
+SEED_PASSWORD: ${self:custom.secrets.SEED_PASSWORD}

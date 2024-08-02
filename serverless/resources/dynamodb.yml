@@ -1,0 +1,21 @@
+Resources:
+  RadixSensorsData:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: radix-sensors-data
+      AttributeDefinitions:
+        - AttributeName: EquipmentId
+          AttributeType: S
+        - AttributeName: Timestamp
+          AttributeType: S
+      KeySchema:
+        - AttributeName: EquipmentId
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: TimestampIndex
+          KeySchema:
+            - AttributeName: Timestamp
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+      BillingMode: PAY_PER_REQUEST

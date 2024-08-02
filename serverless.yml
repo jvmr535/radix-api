@@ -1,0 +1,49 @@
+service: radix-backend
+
+plugins:
+  - serverless-deployment-bucket
+
+frameworkVersion: '3'
+
+custom:
+  serviceNamePrefix: ${self:service}-${sls:stage}
+  deploymentStage: ${sls:stage}
+  secrets: ${ssm:/aws/reference/secretsmanager/${self:custom.serviceNamePrefix}}
+
+provider:
+  name: aws
+  runtime: nodejs20.x
+  region: us-east-1
+  deploymentBucket:
+    name: radix-backend-artifacts-${sls:stage}
+  apiGateway:
+    resourcePolicy:
+      - Effect: Allow
+        Principal: '*'
+        Action: execute-api:Invoke
+        Resource:
+          - '*'
+  environment: ${file(serverless/environment.yml)}
+
+package:
+  patterns: ${file(serverless/patterns.yml)}
+
+functions:
+  main:
+    handler: dist/main.handler
+    role: RadixBackendLambdaRole
+    package:
+      individually: true
+    events:
+      - http:
+          method: ANY
+          path: /
+          cors: true
+      - http:
+          method: ANY
+          path: '{proxy+}'
+          cors: true
+
+resources:
+  - ${file(serverless/resources/roles.yml)}
+  - ${file(serverless/resources/dynamodb.yml)}
