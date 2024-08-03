@@ -4,6 +4,8 @@ import { AwsDynamoDBClient } from 'src/clients/aws-dynamodb/aws-dynamodb.client'
 import { DynamodbTablesEnum, PeriodAveragesEnum } from 'src/domains/enums';
 import { Sensor } from './entities/sensor.entity';
 import { convertCSVtoJSON } from 'src/utils';
+import { QueryCommandInput } from '@aws-sdk/client-dynamodb';
+import { v4 as uuid } from 'uuid';
 
 @Injectable()
 export class SensorService {
@@ -11,18 +13,13 @@ export class SensorService {
 
   constructor(private readonly dynamoDBClient: AwsDynamoDBClient) { }
 
-  public async getSensorData(): Promise<any> {
+  public async getSensorAveragesData(equipmentId: string): Promise<any> {
     try {
-      const [
-        lastDay,
-        lastTwoDays,
-        lastWeek,
-        lastMonth,
-      ] = await Promise.all([
-        this.dynamoDBClient.scanItems(this.getSensorScanParams(PeriodAveragesEnum.LAST_DAY)),
-        this.dynamoDBClient.scanItems(this.getSensorScanParams(PeriodAveragesEnum.LAST_TWO_DAYS)),
-        this.dynamoDBClient.scanItems(this.getSensorScanParams(PeriodAveragesEnum.LAST_WEEK)),
-        this.dynamoDBClient.scanItems(this.getSensorScanParams(PeriodAveragesEnum.LAST_MONTH)),
+      const [lastDay, lastTwoDays, lastWeek, lastMonth] = await Promise.all([
+        this.dynamoDBClient.queryItems(this.getSensorQueryParams(equipmentId, PeriodAveragesEnum.LAST_DAY)),
+        this.dynamoDBClient.queryItems(this.getSensorQueryParams(equipmentId, PeriodAveragesEnum.LAST_TWO_DAYS)),
+        this.dynamoDBClient.queryItems(this.getSensorQueryParams(equipmentId, PeriodAveragesEnum.LAST_WEEK)),
+        this.dynamoDBClient.queryItems(this.getSensorQueryParams(equipmentId, PeriodAveragesEnum.LAST_MONTH)),
       ]);
 
       return {
@@ -41,7 +38,12 @@ export class SensorService {
     try {
       const response = this.dynamoDBClient.insertItem<Sensor>(
         DynamodbTablesEnum.SENSORS,
-        new Sensor(createSensorDto)
+        {
+          EquipmentId: createSensorDto.equipmentId,
+          ActivityId: uuid(),
+          Timestamp: new Date(createSensorDto.timestamp),
+          Value: parseFloat(createSensorDto.value),
+        }
       );
 
       return response;
@@ -54,7 +56,12 @@ export class SensorService {
     try {
       const csv = file.buffer.toString('utf8');
       const csvToJsonData = convertCSVtoJSON<CreateSensorDto>(csv);
-      const convertedData = csvToJsonData.map((data) => new Sensor(data));
+      const convertedData = csvToJsonData.map((data) => ({
+        EquipmentId: data.equipmentId,
+        ActivityId: uuid(),
+        Timestamp: new Date(data.timestamp),
+        Value: parseFloat(data.value),
+      }));
 
       const response = this.dynamoDBClient.batchInsertItems<Sensor>(
         DynamodbTablesEnum.SENSORS,
@@ -69,19 +76,21 @@ export class SensorService {
     }
   }
 
-  private getSensorScanParams(period: PeriodAveragesEnum) {
+  private getSensorQueryParams(equipmentId: string, period: PeriodAveragesEnum) {
     const gte = this.getPeriod(period);
     const lte = new Date().toISOString();
 
     return {
       TableName: DynamodbTablesEnum.SENSORS,
-      FilterExpression: '#ts BETWEEN :startDate and :endDate',
+      IndexName: 'EquipmentId-Timestamp-Index',
+      KeyConditionExpression: 'EquipmentId = :equipmentId AND #timestamp BETWEEN :gte AND :lte',
       ExpressionAttributeNames: {
-        '#ts': 'Timestamp',
+        '#timestamp': 'Timestamp',
       },
       ExpressionAttributeValues: {
-        ':startDate': { S: gte },
-        ':endDate': { S: lte },
+        ':equipmentId': { S: equipmentId },
+        ':gte': { S: gte },
+        ':lte': { S: lte },
       },
     };
   }
@@ -110,3 +119,4 @@ export class SensorService {
     return Number(average.toFixed(2));
   }
 }
+

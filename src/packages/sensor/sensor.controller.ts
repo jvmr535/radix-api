@@ -7,18 +7,21 @@ import {
   HttpException,
   HttpStatus,
   Get,
+  Param,
+  Query,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { SensorService } from './sensor.service';
 import { CreateSensorDto } from './dto/create-sensor.dto';
+import { PeriodAveragesEnum } from 'src/domains/enums';
 
 @Controller('sensor')
 export class SensorController {
   constructor(private readonly sensorService: SensorService) { }
 
   @Get()
-  public async getSensorData() {
-    return this.sensorService.getSensorData();
+  public async getSensorAveragesData(@Query('equipmentId') equipmentId: string) {
+    return this.sensorService.getSensorAveragesData(equipmentId);
   }
 
   @Post()

@@ -3,8 +3,8 @@ import {
   BatchWriteItemCommand,
   DynamoDBClient,
   PutItemCommand,
-  ScanCommand,
-  ScanCommandInput,
+  QueryCommand,
+  QueryCommandInput
 } from '@aws-sdk/client-dynamodb';
 
 @Injectable()
@@ -15,13 +15,14 @@ export class AwsDynamoDBClient {
     this.client = new DynamoDBClient({});
   }
 
-  public async scanItems(params: ScanCommandInput): Promise<any[]> {
+  public async queryItems(params: QueryCommandInput): Promise<any[]> {
     try {
-      const command = new ScanCommand(params);
+      const command = new QueryCommand(params);
+
       const response = await this.client.send(command);
+
       return response.Items || [];
     } catch (error) {
-      console.error('Error querying sensor data:', error);
       throw error;
     }
   }
