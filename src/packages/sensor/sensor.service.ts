@@ -11,26 +11,26 @@ export class SensorService {
 
   constructor(private readonly dynamoDBClient: AwsDynamoDBClient) { }
 
-  public async getSensorData(period: PeriodAveragesEnum): Promise<any> {
+  public async getSensorData(): Promise<any> {
     try {
-      const gte = this.getPeriod(period);
-      const lte = new Date().toISOString();
+      const [
+        lastDay,
+        lastTwoDays,
+        lastWeek,
+        lastMonth,
+      ] = await Promise.all([
+        this.dynamoDBClient.scanItems(this.getSensorScanParams(PeriodAveragesEnum.LAST_DAY)),
+        this.dynamoDBClient.scanItems(this.getSensorScanParams(PeriodAveragesEnum.LAST_TWO_DAYS)),
+        this.dynamoDBClient.scanItems(this.getSensorScanParams(PeriodAveragesEnum.LAST_WEEK)),
+        this.dynamoDBClient.scanItems(this.getSensorScanParams(PeriodAveragesEnum.LAST_MONTH)),
+      ]);
 
-      const sensorData = await this.dynamoDBClient.scanItems({
-        TableName: DynamodbTablesEnum.SENSORS,
-        FilterExpression: '#ts BETWEEN :startDate and :endDate',
-        ExpressionAttributeNames: {
-          '#ts': 'Timestamp',
-        },
-        ExpressionAttributeValues: {
-          ':startDate': { S: gte },
-          ':endDate': { S: lte },
-        },
-      });
-
-      const average = this.calculateAverage(sensorData);
-
-      return { average, period };
+      return {
+        [PeriodAveragesEnum.LAST_DAY]: this.calculateAverage(lastDay),
+        [PeriodAveragesEnum.LAST_TWO_DAYS]: this.calculateAverage(lastTwoDays),
+        [PeriodAveragesEnum.LAST_WEEK]: this.calculateAverage(lastWeek),
+        [PeriodAveragesEnum.LAST_MONTH]: this.calculateAverage(lastMonth),
+      };
     } catch (error) {
       console.error(error);
       throw error;
@@ -67,6 +67,23 @@ export class SensorService {
       console.error(error);
       throw error;
     }
+  }
+
+  private getSensorScanParams(period: PeriodAveragesEnum) {
+    const gte = this.getPeriod(period);
+    const lte = new Date().toISOString();
+
+    return {
+      TableName: DynamodbTablesEnum.SENSORS,
+      FilterExpression: '#ts BETWEEN :startDate and :endDate',
+      ExpressionAttributeNames: {
+        '#ts': 'Timestamp',
+      },
+      ExpressionAttributeValues: {
+        ':startDate': { S: gte },
+        ':endDate': { S: lte },
+      },
+    };
   }
 
   private getPeriod(period: PeriodAveragesEnum): string {
