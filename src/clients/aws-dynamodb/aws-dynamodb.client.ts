@@ -4,7 +4,7 @@ import {
   DynamoDBClient,
   PutItemCommand,
   QueryCommand,
-  QueryCommandInput
+  QueryCommandInput,
 } from '@aws-sdk/client-dynamodb';
 
 @Injectable()
@@ -42,13 +42,17 @@ export class AwsDynamoDBClient {
     }
   }
 
-  public async batchInsertItems<T>(tableName: string, items: T[], chunkSize: number): Promise<T[]> {
+  public async batchInsertItems<T>(
+    tableName: string,
+    items: T[],
+    chunkSize: number,
+  ): Promise<T[]> {
     const chunks = this.chunkArray(items, chunkSize);
 
     const insertedItems: T[] = [];
 
     for (const chunk of chunks) {
-      const putRequests = chunk.map(item => ({
+      const putRequests = chunk.map((item) => ({
         PutRequest: {
           Item: this.formatItem(item),
         },

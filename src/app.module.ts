@@ -3,11 +3,8 @@ import { SensorModule } from './packages/sensor/sensor.module';
 import { AwsDynamoDBModule } from './clients/aws-dynamodb/aws-dynamodb.module';
 
 @Module({
-  imports: [
-    AwsDynamoDBModule,
-    SensorModule
-  ],
+  imports: [AwsDynamoDBModule, SensorModule],
   controllers: [],
   providers: [],
 })
-export class AppModule { }
+export class AppModule {}

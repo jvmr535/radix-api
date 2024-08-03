@@ -1,5 +1,5 @@
 export class CreateSensorDto {
-    equipmentId: string;
-    timestamp: string;
-    value: string;
+  equipmentId: string;
+  timestamp: string;
+  value: string;
 }

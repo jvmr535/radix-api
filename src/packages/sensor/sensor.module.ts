@@ -8,4 +8,4 @@ import { AwsDynamoDBModule } from 'src/clients/aws-dynamodb/aws-dynamodb.module'
   controllers: [SensorController],
   providers: [SensorService],
 })
-export class SensorModule { }
+export class SensorModule {}
