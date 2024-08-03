@@ -35,9 +35,16 @@ Resources:
                         - ':'
                         - Ref: AWS::AccountId
                         - ':table/radix-sensors-data'
+                  - Fn::Join:
+                      - ''
+                      - - 'arn:aws:dynamodb:'
+                        - Ref: AWS::Region
+                        - ':'
+                        - Ref: AWS::AccountId
+                        - ':table/radix-sensors-data/index/EquipmentId-Timestamp-Index'
               - Effect: Allow
                 Action:
-                  - "s3:*"
+                  - 's3:*'
                 Resource:
                   - arn:aws:s3:::${self:custom.serviceNamePrefix}
                   - arn:aws:s3:::${self:custom.serviceNamePrefix}/*
