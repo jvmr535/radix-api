@@ -6,18 +6,27 @@ import {
   UseInterceptors,
   HttpException,
   HttpStatus,
+  Get,
+  Param,
+  Query,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { SensorService } from './sensor.service';
 import { CreateSensorDto } from './dto/create-sensor.dto';
+import { PeriodAveragesEnum } from 'src/domains/enums';
 
 @Controller('sensor')
 export class SensorController {
   constructor(private readonly sensorService: SensorService) { }
 
+  @Get()
+  public async getSensorData(@Query('period') period: PeriodAveragesEnum) {
+    return this.sensorService.getSensorData(period);
+  }
+
   @Post()
-  public async create(@Body() createSensorDto: CreateSensorDto) {
-    return this.sensorService.create(createSensorDto);
+  public async createSensorData(@Body() createSensorDto: CreateSensorDto) {
+    return this.sensorService.createSensorData(createSensorDto);
   }
 
   @Post('csv')
@@ -27,6 +36,6 @@ export class SensorController {
       throw new HttpException('File not provided', HttpStatus.BAD_REQUEST);
     }
 
-    return this.sensorService.createFromCsv(file);
+    return this.sensorService.createSensorDataFromCsv(file);
   }
 }
