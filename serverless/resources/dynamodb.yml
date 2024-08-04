@@ -1,4 +1,24 @@
 Resources:
+  RadixAccessData:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: radix-access-data
+      AttributeDefinitions:
+        - AttributeName: UserAccessKey
+          AttributeType: S
+        - AttributeName: Username
+          AttributeType: S
+      KeySchema:
+        - AttributeName: UserAccessKey
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: UsernameIndex
+          KeySchema:
+            - AttributeName: Username
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+      BillingMode: PAY_PER_REQUEST
   RadixSensorsData:
     Type: AWS::DynamoDB::Table
     Properties:

@@ -15,19 +15,25 @@ export class AwsDynamoDBClient {
     this.client = new DynamoDBClient({});
   }
 
-  public async queryItems(params: QueryCommandInput): Promise<any[]> {
+  public async queryItems<T>(params: QueryCommandInput): Promise<T[]> {
     try {
       const command = new QueryCommand(params);
 
-      const response = await this.client.send(command);
+      const { Items } = await this.client.send(command);
 
-      return response.Items || [];
+      if (Items.length === 0) {
+        return null;
+      }
+
+      const data = Items.map((item) => this.parseDynamoDBItem(item));
+
+      return data;
     } catch (error) {
       throw error;
     }
   }
 
-  public async insertItem<T>(tableName: string, item: T): Promise<T> {
+  public async insertItem(tableName: string, item: any) {
     const command = new PutItemCommand({
       TableName: tableName,
       Item: this.formatItem(item),
@@ -129,5 +135,35 @@ export class AwsDynamoDBClient {
     }
 
     return value;
+  }
+
+  private parseDynamoDBItem(item: { [key: string]: any }): any {
+    const parsedItem: { [key: string]: any } = {};
+
+    const attributeHandlers: { [type: string]: (value: any) => any } = {
+      S: (value) => value,
+      SS: (value) => value,
+      N: (value) => Number(value),
+      NS: (value) => value.map(Number),
+      B: (value) => value,
+      BS: (value) => value,
+      BOOL: (value) => value,
+      L: (value) =>
+        value.map((element: any) => this.parseDynamoDBItem(element)),
+      M: (value) => this.parseDynamoDBItem(value),
+    };
+
+    for (const key in item) {
+      const value = item[key];
+
+      const handler = Object.keys(value).find(
+        (type) => attributeHandlers[type],
+      );
+      if (handler) {
+        parsedItem[key] = attributeHandlers[handler](value[handler]);
+      }
+    }
+
+    return parsedItem;
   }
 }

@@ -15,19 +15,19 @@ export class SensorService {
   public async getSensorAveragesData(equipmentId: string): Promise<any> {
     try {
       const [lastDay, lastTwoDays, lastWeek, lastMonth] = await Promise.all([
-        this.dynamoDBClient.queryItems(
+        this.dynamoDBClient.queryItems<Sensor>(
           this.getSensorQueryParams(equipmentId, PeriodAveragesEnum.LAST_DAY),
         ),
-        this.dynamoDBClient.queryItems(
+        this.dynamoDBClient.queryItems<Sensor>(
           this.getSensorQueryParams(
             equipmentId,
             PeriodAveragesEnum.LAST_TWO_DAYS,
           ),
         ),
-        this.dynamoDBClient.queryItems(
+        this.dynamoDBClient.queryItems<Sensor>(
           this.getSensorQueryParams(equipmentId, PeriodAveragesEnum.LAST_WEEK),
         ),
-        this.dynamoDBClient.queryItems(
+        this.dynamoDBClient.queryItems<Sensor>(
           this.getSensorQueryParams(equipmentId, PeriodAveragesEnum.LAST_MONTH),
         ),
       ]);
@@ -50,7 +50,7 @@ export class SensorService {
     createSensorDto: CreateSensorDto,
   ): Promise<Sensor> {
     try {
-      const response = this.dynamoDBClient.insertItem<Sensor>(
+      const response = this.dynamoDBClient.insertItem(
         DynamodbTablesEnum.SENSORS,
         {
           EquipmentId: createSensorDto.equipmentId,
@@ -130,13 +130,17 @@ export class SensorService {
     }
   }
 
-  private calculateAverage(sensorData: any[]): number {
-    if (sensorData.length === 0) return 0;
+  private calculateAverage(sensorData: Sensor[]): number {
+    if (
+      sensorData === undefined ||
+      sensorData === null ||
+      sensorData.length === 0
+    ) {
+      return 0;
+    }
 
-    const sum = sensorData.reduce(
-      (acc, item) => acc + parseFloat(item.Value.N),
-      0,
-    );
+    const sum = sensorData.reduce((acc, curr) => acc + curr.Value, 0);
+
     const average = sum / sensorData.length;
 
     return Number(average.toFixed(2));
