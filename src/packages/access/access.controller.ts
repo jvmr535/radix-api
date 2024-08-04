@@ -5,7 +5,7 @@ import { LoginCredentialsDto } from './dto/login-credentials.dto';
 
 @Controller('access')
 export class AccessController {
-  constructor(private readonly accessService: AccessService) { }
+  constructor(private readonly accessService: AccessService) {}
 
   @Public()
   @Post('signIn')

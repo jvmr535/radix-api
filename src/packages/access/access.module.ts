@@ -10,4 +10,4 @@ import { JwtStrategy } from 'src/strategies/jwt.strategy';
   imports: [JwtModule, AwsDynamoDBModule],
   providers: [AccessService, JwtStrategy],
 })
-export class AccessModule { }
+export class AccessModule {}

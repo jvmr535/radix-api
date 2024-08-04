@@ -15,7 +15,7 @@ import { CreateSensorDto } from './dto/create-sensor.dto';
 
 @Controller('sensor')
 export class SensorController {
-  constructor(private readonly sensorService: SensorService) { }
+  constructor(private readonly sensorService: SensorService) {}
 
   @Get()
   public async getSensorAveragesData(

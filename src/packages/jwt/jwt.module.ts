@@ -17,4 +17,4 @@ import { EnvKeys } from 'src/domains/enums';
   ],
   exports: [JwtService],
 })
-export class JwtModule { }
+export class JwtModule {}

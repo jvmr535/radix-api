@@ -10,7 +10,7 @@ import { v4 as uuid } from 'uuid';
 export class SensorService {
   private readonly CHUNK_SIZE = 25;
 
-  constructor(private readonly dynamoDBClient: AwsDynamoDBClient) { }
+  constructor(private readonly dynamoDBClient: AwsDynamoDBClient) {}
 
   public async getSensorAveragesData(equipmentId: string): Promise<any> {
     try {
@@ -33,9 +33,9 @@ export class SensorService {
       ]);
 
       return [
-        { period: 'Últimas 24 horas', value: this.calculateAverage(lastDay) },
+        { period: '24 horas', value: this.calculateAverage(lastDay) },
         {
-          period: 'Últimas 48 horas',
+          period: '48 horas',
           value: this.calculateAverage(lastTwoDays),
         },
         { period: 'Última semana', value: this.calculateAverage(lastWeek) },

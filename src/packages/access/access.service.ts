@@ -14,7 +14,7 @@ export class AccessService {
     private readonly dynamoDBClient: AwsDynamoDBClient,
     private jwtService: JwtService,
     private configService: ConfigService,
-  ) { }
+  ) {}
 
   public async signIn(
     loginCredentials: LoginCredentialsDto,
