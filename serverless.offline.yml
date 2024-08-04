@@ -10,6 +10,7 @@ provider:
 functions:
   main:
     handler: dist/main.handler
+    memorySize: 4096
     events:
       - http:
           method: ANY
