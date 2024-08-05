@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { CreateSensorDto } from './dto/create-sensor.dto';
 import { AwsDynamoDBClient } from 'src/clients/aws-dynamodb/aws-dynamodb.client';
 import { DynamodbTablesEnum, PeriodAveragesEnum } from 'src/domains/enums';
@@ -10,6 +10,7 @@ import { SensorAverage } from './entities/sensor-average.entity';
 @Injectable()
 export class SensorService {
   private readonly CHUNK_SIZE = 25;
+  private readonly DATE_NOW = Date.now();
 
   constructor(private readonly dynamoDBClient: AwsDynamoDBClient) {}
 
@@ -17,35 +18,31 @@ export class SensorService {
     equipmentId: string,
   ): Promise<SensorAverage[]> {
     try {
-      const [lastDay, lastTwoDays, lastWeek, lastMonth] = await Promise.all([
+      const periods = [
+        PeriodAveragesEnum.LAST_DAY,
+        PeriodAveragesEnum.LAST_TWO_DAYS,
+        PeriodAveragesEnum.LAST_WEEK,
+        PeriodAveragesEnum.LAST_MONTH,
+      ];
+
+      const queries = periods.map((period) =>
         this.dynamoDBClient.queryItems<Sensor>(
-          this.getSensorQueryParams(equipmentId, PeriodAveragesEnum.LAST_DAY),
+          this.getSensorQueryParams(equipmentId, period),
         ),
-        this.dynamoDBClient.queryItems<Sensor>(
-          this.getSensorQueryParams(
-            equipmentId,
-            PeriodAveragesEnum.LAST_TWO_DAYS,
-          ),
-        ),
-        this.dynamoDBClient.queryItems<Sensor>(
-          this.getSensorQueryParams(equipmentId, PeriodAveragesEnum.LAST_WEEK),
-        ),
-        this.dynamoDBClient.queryItems<Sensor>(
-          this.getSensorQueryParams(equipmentId, PeriodAveragesEnum.LAST_MONTH),
-        ),
-      ]);
+      );
+
+      const [lastDay, lastTwoDays, lastWeek, lastMonth] =
+        await Promise.all(queries);
 
       return [
         { period: '24 horas', value: this.calculateAverage(lastDay) },
-        {
-          period: '48 horas',
-          value: this.calculateAverage(lastTwoDays),
-        },
+        { period: '48 horas', value: this.calculateAverage(lastTwoDays) },
         { period: 'Última semana', value: this.calculateAverage(lastWeek) },
         { period: 'Último mês', value: this.calculateAverage(lastMonth) },
       ];
     } catch (error) {
-      throw error;
+      console.error('Error fetching sensor averages:', error.message || error);
+      throw new InternalServerErrorException('Failed to fetch sensor averages');
     }
   }
 
@@ -53,19 +50,24 @@ export class SensorService {
     createSensorDto: CreateSensorDto,
   ): Promise<Sensor> {
     try {
-      const response = this.dynamoDBClient.insertItem(
+      const { equipmentId, timestamp, value } = createSensorDto;
+
+      const sensorData = {
+        EquipmentId: equipmentId,
+        ActivityId: uuid(),
+        Timestamp: new Date(timestamp),
+        Value: typeof value === 'string' ? parseFloat(value) : value,
+      };
+
+      const response = await this.dynamoDBClient.insertItem(
         DynamodbTablesEnum.SENSORS,
-        {
-          EquipmentId: createSensorDto.equipmentId,
-          ActivityId: uuid(),
-          Timestamp: new Date(createSensorDto.timestamp),
-          Value: parseFloat(createSensorDto.value),
-        },
+        sensorData,
       );
 
       return response;
     } catch (error) {
-      console.error(error);
+      console.error('Error creating sensor data:', error.message || error);
+      throw new InternalServerErrorException('Failed to create sensor data');
     }
   }
 
@@ -75,12 +77,15 @@ export class SensorService {
     try {
       const csv = file.buffer.toString('utf8');
       const csvToJsonData = convertCSVtoJSON<CreateSensorDto>(csv);
-      const convertedData = csvToJsonData.map((data) => ({
-        EquipmentId: data.equipmentId,
-        ActivityId: uuid(),
-        Timestamp: new Date(data.timestamp),
-        Value: parseFloat(data.value),
-      }));
+
+      const convertedData = csvToJsonData.map(
+        ({ equipmentId, timestamp, value }) => ({
+          EquipmentId: equipmentId,
+          ActivityId: uuid(),
+          Timestamp: new Date(timestamp),
+          Value: typeof value === 'string' ? parseFloat(value) : value,
+        }),
+      );
 
       await this.dynamoDBClient.batchInsertItems<Sensor>(
         DynamodbTablesEnum.SENSORS,
@@ -90,8 +95,13 @@ export class SensorService {
 
       return convertedData;
     } catch (error) {
-      console.error(error);
-      throw error;
+      console.error(
+        'Error creating sensor data from CSV:',
+        error.message || error,
+      );
+      throw new InternalServerErrorException(
+        'Failed to create sensor data from CSV',
+      );
     }
   }
 
@@ -99,7 +109,7 @@ export class SensorService {
     equipmentId: string,
     period: PeriodAveragesEnum,
   ) {
-    const gte = this.getPeriod(period);
+    const gte = this.getPeriodStart(period);
     const lte = new Date().toISOString();
 
     return {
@@ -118,32 +128,26 @@ export class SensorService {
     };
   }
 
-  private getPeriod(period: PeriodAveragesEnum): string {
-    switch (period) {
-      case PeriodAveragesEnum.LAST_DAY:
-        return new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-      case PeriodAveragesEnum.LAST_TWO_DAYS:
-        return new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString();
-      case PeriodAveragesEnum.LAST_WEEK:
-        return new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-      case PeriodAveragesEnum.LAST_MONTH:
-        return new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
-      default:
-        return new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-    }
+  private getPeriodStart(period: PeriodAveragesEnum): string {
+    const periodsInMs = {
+      [PeriodAveragesEnum.LAST_DAY]: 24 * 60 * 60 * 1000,
+      [PeriodAveragesEnum.LAST_TWO_DAYS]: 2 * 24 * 60 * 60 * 1000,
+      [PeriodAveragesEnum.LAST_WEEK]: 7 * 24 * 60 * 60 * 1000,
+      [PeriodAveragesEnum.LAST_MONTH]: 30 * 24 * 60 * 60 * 1000,
+    };
+
+    return new Date(
+      this.DATE_NOW -
+        (periodsInMs[period] || periodsInMs[PeriodAveragesEnum.LAST_DAY]),
+    ).toISOString();
   }
 
   private calculateAverage(sensorData: Sensor[]): number {
-    if (
-      sensorData === undefined ||
-      sensorData === null ||
-      sensorData.length === 0
-    ) {
+    if (!sensorData?.length) {
       return 0;
     }
 
     const sum = sensorData.reduce((acc, curr) => acc + curr.Value, 0);
-
     const average = sum / sensorData.length;
 
     return Number(average.toFixed(2));

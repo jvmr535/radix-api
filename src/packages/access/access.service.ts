@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { LoginCredentialsDto } from './dto/login-credentials.dto';
 import { AuthAccess } from './entities/auth-access.entity';
 import { AwsDynamoDBClient } from 'src/clients/aws-dynamodb/aws-dynamodb.client';
@@ -7,56 +7,60 @@ import { ConfigService } from '@nestjs/config';
 import { Access } from './entities/access.entity';
 import { DynamodbTablesEnum, EnvKeys } from 'src/domains/enums';
 import { decryptString } from 'src/utils/decrypt-string';
-import { UnauthorizedError } from 'src/error';
 
 @Injectable()
 export class AccessService {
+  private readonly tokenExpiry = '24h';
+
   constructor(
     private readonly dynamoDBClient: AwsDynamoDBClient,
-    private jwtService: JwtService,
-    private configService: ConfigService,
+    private readonly jwtService: JwtService,
+    private readonly configService: ConfigService,
   ) {}
 
   public async signIn(
     loginCredentials: LoginCredentialsDto,
   ): Promise<AuthAccess> {
+    const { username, password } = loginCredentials;
+
     try {
-      const { UserAccessKey, Username, IsActive, Password } = (
-        await this.dynamoDBClient.queryItems<Access>({
-          TableName: DynamodbTablesEnum.ACCESS,
-          IndexName: 'UsernameIndex',
-          KeyConditionExpression: 'Username = :username',
-          ExpressionAttributeValues: {
-            ':username': { S: loginCredentials.username },
-          },
-        })
-      )[0];
+      const [userAccess] = await this.dynamoDBClient.queryItems<Access>({
+        TableName: DynamodbTablesEnum.ACCESS,
+        IndexName: 'UsernameIndex',
+        KeyConditionExpression: 'Username = :username',
+        ExpressionAttributeValues: {
+          ':username': { S: username },
+        },
+      });
+
+      if (!userAccess) {
+        throw new UnauthorizedException('Invalid credentials');
+      }
+
+      const { UserAccessKey, Username, IsActive, Password } = userAccess;
 
       const decryptedPassword = decryptString(
         Password,
         this.configService.get<string>(EnvKeys.ENCRYPTION_KEY),
       );
 
-      if (loginCredentials.password === decryptedPassword) {
-        const payload = {
-          userAccessKey: UserAccessKey,
-          username: Username,
-          isActive: IsActive,
-        };
-
-        const expiresIn = '24h';
-
-        return {
-          accessToken: this.jwtService.sign(payload, { expiresIn }),
-        };
+      if (password !== decryptedPassword) {
+        throw new UnauthorizedException('Invalid credentials');
       }
 
-      return {
-        accessToken: null,
+      const payload = {
+        userAccessKey: UserAccessKey,
+        username: Username,
+        isActive: IsActive,
       };
+
+      const accessToken = this.jwtService.sign(payload, {
+        expiresIn: this.tokenExpiry,
+      });
+
+      return { accessToken };
     } catch (error) {
-      console.log('Error signing in:', error);
-      throw new UnauthorizedError('Não foi possível realizar o login');
+      throw new UnauthorizedException('Unable to sign in');
     }
   }
 }

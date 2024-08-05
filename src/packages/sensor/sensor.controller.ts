@@ -12,11 +12,18 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { SensorService } from './sensor.service';
 import { CreateSensorDto } from './dto/create-sensor.dto';
-import { ApiResponse, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiBody,
+  ApiConsumes,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import { SensorAverage } from './entities/sensor-average.entity';
 import { Sensor } from './entities/sensor.entity';
 
 @ApiTags('Rotas de sensor')
+@ApiBearerAuth()
 @Controller('sensor')
 export class SensorController {
   constructor(private readonly sensorService: SensorService) {}
@@ -60,6 +67,18 @@ export class SensorController {
   }
 
   @Post('csv')
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        file: {
+          type: 'string',
+          format: 'binary',
+        },
+      },
+    },
+  })
   @ApiResponse({
     status: 200,
     description: 'Atividades de sensores criadas com sucesso',

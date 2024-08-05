@@ -18,6 +18,7 @@ export async function createServer(): Promise<Handler> {
         'Estas são as rotas disponíveis para a API do Radix Sensor',
       )
       .setVersion('1.0')
+      .addBearerAuth()
       .build();
 
     const document = SwaggerModule.createDocument(app, config);

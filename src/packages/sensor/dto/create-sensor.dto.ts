@@ -8,5 +8,5 @@ export class CreateSensorDto {
   timestamp: string;
 
   @ApiProperty({ description: 'Valor lido pelo sensor' })
-  value: string;
+  value: number | string;
 }
