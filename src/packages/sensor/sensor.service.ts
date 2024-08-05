@@ -5,6 +5,7 @@ import { DynamodbTablesEnum, PeriodAveragesEnum } from 'src/domains/enums';
 import { Sensor } from './entities/sensor.entity';
 import { convertCSVtoJSON } from 'src/utils';
 import { v4 as uuid } from 'uuid';
+import { SensorAverage } from './entities/sensor-average.entity';
 
 @Injectable()
 export class SensorService {
@@ -12,7 +13,9 @@ export class SensorService {
 
   constructor(private readonly dynamoDBClient: AwsDynamoDBClient) {}
 
-  public async getSensorAveragesData(equipmentId: string): Promise<any> {
+  public async getSensorAveragesData(
+    equipmentId: string,
+  ): Promise<SensorAverage[]> {
     try {
       const [lastDay, lastTwoDays, lastWeek, lastMonth] = await Promise.all([
         this.dynamoDBClient.queryItems<Sensor>(

@@ -1,4 +1,9 @@
+import { ApiProperty } from '@nestjs/swagger';
+
 export class LoginCredentialsDto {
-  Username: string;
-  Password: string;
+  @ApiProperty({ description: 'Nome de usuário', example: 'john_doe' })
+  username: string;
+
+  @ApiProperty({ description: 'Senha', example: 'password123' })
+  password: string;
 }

@@ -7,6 +7,7 @@ import { ConfigService } from '@nestjs/config';
 import { Access } from './entities/access.entity';
 import { DynamodbTablesEnum, EnvKeys } from 'src/domains/enums';
 import { decryptString } from 'src/utils/decrypt-string';
+import { UnauthorizedError } from 'src/error';
 
 @Injectable()
 export class AccessService {
@@ -26,7 +27,7 @@ export class AccessService {
           IndexName: 'UsernameIndex',
           KeyConditionExpression: 'Username = :username',
           ExpressionAttributeValues: {
-            ':username': { S: loginCredentials.Username },
+            ':username': { S: loginCredentials.username },
           },
         })
       )[0];
@@ -36,7 +37,7 @@ export class AccessService {
         this.configService.get<string>(EnvKeys.ENCRYPTION_KEY),
       );
 
-      if (loginCredentials.Password === decryptedPassword) {
+      if (loginCredentials.password === decryptedPassword) {
         const payload = {
           userAccessKey: UserAccessKey,
           username: Username,
@@ -54,7 +55,8 @@ export class AccessService {
         accessToken: null,
       };
     } catch (error) {
-      throw error;
+      console.log('Error signing in:', error);
+      throw new UnauthorizedError('Não foi possível realizar o login');
     }
   }
 }

@@ -12,18 +12,18 @@ export async function seedUserAwsDynamoDB(
     const dynamoDBClient = new AwsDynamoDBClient();
 
     const createAccessDto: CreateAccessDto = {
-      Username: configService.get<string>(EnvKeys.SEED_USERNAME),
-      Password: configService.get<string>(EnvKeys.SEED_PASSWORD),
-      IsActive: true,
+      username: configService.get<string>(EnvKeys.SEED_USERNAME),
+      password: configService.get<string>(EnvKeys.SEED_PASSWORD),
+      isActive: true,
     };
 
     const encryptionKey = configService.get<string>(EnvKeys.ENCRYPTION_KEY);
 
     await dynamoDBClient.insertItem(DynamodbTablesEnum.ACCESS, {
       UserAccessKey: uuid(),
-      Username: createAccessDto.Username,
-      Password: encryptString(createAccessDto.Password, encryptionKey),
-      IsActive: createAccessDto.IsActive,
+      Username: createAccessDto.username,
+      Password: encryptString(createAccessDto.password, encryptionKey),
+      IsActive: createAccessDto.isActive,
     });
 
     return true;
