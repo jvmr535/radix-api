@@ -28,7 +28,6 @@ export async function seedUserAwsDynamoDB(
 
     return true;
   } catch (error) {
-    console.error('Error seeding user:', error);
     return false;
   }
 }

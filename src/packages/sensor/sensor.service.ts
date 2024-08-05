@@ -41,7 +41,6 @@ export class SensorService {
         { period: 'Último mês', value: this.calculateAverage(lastMonth) },
       ];
     } catch (error) {
-      console.error('Error fetching sensor averages:', error.message || error);
       throw new InternalServerErrorException('Failed to fetch sensor averages');
     }
   }
@@ -66,7 +65,6 @@ export class SensorService {
 
       return response;
     } catch (error) {
-      console.error('Error creating sensor data:', error.message || error);
       throw new InternalServerErrorException('Failed to create sensor data');
     }
   }
@@ -95,10 +93,6 @@ export class SensorService {
 
       return convertedData;
     } catch (error) {
-      console.error(
-        'Error creating sensor data from CSV:',
-        error.message || error,
-      );
       throw new InternalServerErrorException(
         'Failed to create sensor data from CSV',
       );

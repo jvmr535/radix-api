@@ -43,7 +43,6 @@ export class AwsDynamoDBClient {
       await this.client.send(command);
       return item;
     } catch (error) {
-      console.error(error);
       throw error;
     }
   }
@@ -74,7 +73,6 @@ export class AwsDynamoDBClient {
         await this.client.send(new BatchWriteItemCommand(params));
         insertedItems.push(...chunk);
       } catch (error) {
-        console.error(error);
         throw error;
       }
     }
